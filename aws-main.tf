@@ -49,16 +49,58 @@ resource "aws_subnet" "example" {
   }
 }
 
+resource "aws_security_group" "example" {
+  name        = "example_sg"
+  description = "Example security group"
+  vpc_id      = aws_vpc.example.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["14.143.216.186/32"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_instance" "example" {
   ami           = var.instance_ami
   instance_type = var.instance_type
   subnet_id     = aws_subnet.example.id
   key_name      = aws_key_pair.example.key_name
 
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"  # Replace with the appropriate user for your AMI
+    private_key = file("myEC2instance.pub")  # Replace with the path to your private key
+    host        = self.public_ip
+  }
+
   tags = {
     Name = "MyEC2Instance"
   }
 }
+
+resource "aws_ebs_volume" "example" {
+  availability_zone = aws_instance.example.availability_zone
+  size              = 60  # Replace with your desired volume size in GB
+  tags = {
+    Name = "example_volume"
+  }
+}
+
+resource "aws_volume_attachment" "example" {
+  device_name = "/dev/sdf"  # Replace with your desired device name
+  volume_id   = aws_ebs_volume.example.id
+  instance_id = aws_instance.example.id
+}
+
 
 resource "aws_internet_gateway" "example" {
   vpc_id = aws_vpc.example.id
